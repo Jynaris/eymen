@@ -76,6 +76,17 @@ Ekran açık (aralıkta): 6 dk 10 sn | ekran açılma sayısı: 3
 Pil Log'un kendisi: bu ölçüm 310 ms sürdü, 95 ms CPU | sistem ölçümüne göre aralıkta 0.004 mAh, 0.12 sn CPU
 ```
 
+## Samsung (One UI) için ek ayar — önemli
+
+One UI, pil optimizasyonu muafiyetine ek olarak uygulamaları kendi listeleriyle "uyutur". Kayıtlar düzenli gelsin diye:
+
+1. **Ayarlar → Uygulamalar → Pil Log → Pil → "Kısıtlamasız"** seçin.
+2. **Ayarlar → Pil → Arka plan kullanım sınırları:** Pil Log "Uyuyan uygulamalar" veya "Derin uyuyan uygulamalar"
+   listesindeyse çıkarın. İsterseniz "Hiç uyumayan uygulamalar"a ekleyin.
+3. "Kullanılmayan uygulamaları uyku moduna al" açıksa Pil Log'u yukarıdaki gibi istisna yapın.
+
+Bunlar uygulamanın daha fazla pil harcamasına yol açmaz; sadece Samsung'un 15 dakikalık işi iptal etmesini önler.
+
 ## Notlar
 
 - mAh değerleri Android'in kendi güç modeline göre **tahmindir**. Ayarlar → Pil ekranındaki rakamlarla aynı kaynaktan gelir.

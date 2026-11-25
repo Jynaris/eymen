@@ -62,10 +62,7 @@ public class MainActivity extends Activity {
 
         Button now = new Button(this);
         now.setText("Şimdi bir kayıt al");
-        now.setOnClickListener(v -> {
-            Scheduler.runNow(this);
-            status.postDelayed(this::refresh, 3000);
-        });
+        now.setOnClickListener(v -> collectNow());
         root.addView(now);
 
         ScrollView sv = new ScrollView(this);
@@ -76,8 +73,33 @@ public class MainActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
-        Scheduler.schedule(this);
-        Scheduler.runNow(this);
+        try {
+            Scheduler.schedule(this);
+        } catch (Exception e) {
+            android.widget.Toast.makeText(this, "Zamanlama hatası: " + e, android.widget.Toast.LENGTH_LONG).show();
+        }
+        collectNow();
+    }
+
+    /** Ekran açıkken hemen bir kayıt al (dosyanın oluştuğunu görmek için). */
+    private void collectNow() {
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            String msg;
+            try {
+                Collector.collectAndWrite(app);
+                msg = "Kayıt alındı: İndirilenler/" + LogWriter.FOLDER + "/" + LogWriter.todayFileName();
+            } catch (Throwable t) {
+                msg = "Kayıt hatası: " + t;
+                try { LogWriter.append(app, "\n[HATA] " + android.util.Log.getStackTraceString(t) + "\n"); } catch (Throwable ignored) { }
+            }
+            final String m = msg;
+            runOnUiThread(() -> {
+                if (isFinishing()) return;
+                android.widget.Toast.makeText(app, m, android.widget.Toast.LENGTH_LONG).show();
+                refresh();
+            });
+        }, "pillog-now").start();
     }
 
     @Override

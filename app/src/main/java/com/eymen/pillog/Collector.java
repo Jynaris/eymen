@@ -33,7 +33,7 @@ final class Collector {
 
     private Collector() {}
 
-    static void collectAndWrite(Context ctx) throws Exception {
+    static synchronized void collectAndWrite(Context ctx) throws Exception {
         long startElapsed = SystemClock.elapsedRealtime();
         long startCpu = Process.getElapsedCpuTime();
 
