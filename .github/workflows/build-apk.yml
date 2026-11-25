@@ -1,0 +1,45 @@
+name: APK derle
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: APK derle
+        run: gradle --no-daemon assembleRelease
+
+      - name: APK'yı yeniden adlandır
+        run: cp app/build/outputs/apk/release/app-release.apk PilLog.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PilLog-apk
+          path: PilLog.apk
+
+      - name: "Releases sayfasına yükle (telefondan kolay indirme)"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pillog-latest
+          name: Pil Log (son sürüm)
+          body: "Otomatik derlendi: ${{ github.sha }}. PilLog.apk dosyasını indirip kurun. Kurulum adımları README.md içinde."
+          prerelease: true
+          files: PilLog.apk
