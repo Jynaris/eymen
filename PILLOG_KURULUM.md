@@ -15,6 +15,12 @@ Her kayıtta:
 - **Uygulama ve süreç bazında, o aralıkta (sistem uygulamaları ve çekirdek dahil):**
   tahmini pil tüketimi (mAh), CPU süresi, wakelock (ekran kapalıyken telefonu uyanık tutma) süresi,
   uyandırma alarmları, çalışan arka plan işleri (job), mobil ve WiFi veri kullanımı
+- **Ayrıntı (her kalem, sınırsız):** her süreç (surfaceflinger gibi native/sistem daemon'ları dahil) için CPU,
+  başlatma, ANR ve çökme; her servis için çalışma süresi ve başlatma sayısı; adıyla her wakelock, uyandırma alarmı,
+  iş (job) ve senkronizasyon; kernel wakelock'ları ve cihazı uyandıran donanım nedenleri; sensör kullanımı
+- **Çalışan süreçler ve servisler:** her kayıtta başlayan, sonlanan ve durumu değişen süreçler/servisler; saat başı tam liste
+- **Olay günlüğü:** UsageStats'ın aralıktaki tüm olayları zaman sırasıyla (uygulama açıldı/kapandı, bildirim geldi,
+  ön plan servisi başladı/durdu, ekran açıldı/kapandı, kilit, bekleme kovası değişti vb.)
 - **Son tam şarjdan beri en çok tüketen 15 kalem** ve ekran, hücresel, WiFi, boşta gibi donanım kalemleri
 - **Ne yapıldı:** hangi uygulama kaç dakika ekranda kaldı, kaç kez açıldı, ne kadar ön plan servisi
   (müzik, navigasyon, indirme vb.) çalıştırdı; ekranın kaç kez açıldığı ve açık kalma süresi

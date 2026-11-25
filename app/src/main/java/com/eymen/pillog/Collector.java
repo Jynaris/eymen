@@ -25,11 +25,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 /** Tek bir ölçüm turu: pil durumu + UsageStats + batterystats → metin bloğu → İndirilenler'deki log. */
 final class Collector {
     private static final Locale L = Locale.US;
-    private static final int MAX_ROWS = 40;
 
     private Collector() {}
 
@@ -43,21 +43,22 @@ final class Collector {
         boolean firstRun = last == 0 || last > now || now - last > 24L * 3600_000L;
         long from = firstRun ? now - Scheduler.INTERVAL_MS : last;
 
-        StringBuilder sb = new StringBuilder(8 * 1024);
+        StringBuilder sb = new StringBuilder(32 * 1024);
         SimpleDateFormat full = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", L);
         SimpleDateFormat hm = new SimpleDateFormat("HH:mm:ss", L);
         sb.append("\n==================== ").append(full.format(new Date(now))).append(" ====================\n");
         sb.append("Aralık: ").append(hm.format(new Date(from))).append(" -> ").append(hm.format(new Date(now)))
-                .append(" (").append(dur(now - from)).append(")").append(firstRun ? " [ilk ölçüm]" : "").append('\n');
+                .append(" (").append(dur(now - from)).append(")").append(firstRun ? " [ilk ölçüm / referans]" : "").append('\n');
+        sb.append("Cihaz: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
+                .append(" | Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")")
+                .append(" | açık kalma: ").append(dur(SystemClock.elapsedRealtime()))
+                .append(" | uyanık: ").append(dur(SystemClock.uptimeMillis())).append('\n');
 
-        // ---------- Pil durumu ----------
         appendBattery(ctx, sb, sp);
 
-        // ---------- UsageStats ----------
         UsageReader.Result usage = UsageReader.read(ctx, from, now);
-
-        // ---------- batterystats ----------
         BatteryStatsReader.Result bs = BatteryStatsReader.read(ctx);
+        ActivityReader.Result act = BatteryStatsReader.hasPermission(ctx) ? ActivityReader.read() : null;
 
         PackageManager pm = ctx.getPackageManager();
         Map<String, String> labelCache = new HashMap<>();
@@ -72,6 +73,7 @@ final class Collector {
         long myCpuDelta = -1;
 
         if (bs.error == null && !bs.uids.isEmpty()) {
+            sb.append("Kaynak: batterystats/").append(bs.source).append('\n');
             Map<Integer, long[]> prev = loadPrev(ctx);
             Map<Integer, long[]> cur = new HashMap<>();
             List<Row> rows = new ArrayList<>();
@@ -85,8 +87,7 @@ final class Collector {
                 long[] d = new long[v.length];
                 boolean reset = false;
                 for (int i = 0; i < v.length; i++) {
-                    long p = pv == null ? 0 : pv[i];
-                    if (v[i] < p) reset = true;
+                    if (pv != null && v[i] < pv[i]) reset = true;
                 }
                 for (int i = 0; i < v.length; i++) {
                     d[i] = (pv == null || reset) ? (firstRun ? 0 : v[i]) : v[i] - pv[i];
@@ -100,32 +101,75 @@ final class Collector {
             }
             saveCur(ctx, cur);
 
+            // Ayrıntı farkları
+            Map<String, Long> prevDetail = loadDetail(ctx);
+            saveDetail(ctx, bs.detail);
+            // (tür, uid, ad) -> "ölçü +fark" listesi
+            Map<Integer, TreeMap<String, StringBuilder>> detailByUid = new HashMap<>();
+            Map<Integer, Long> detailWeight = new HashMap<>();
+            if (!firstRun) {
+                for (Map.Entry<String, Long> en : bs.detail.entrySet()) {
+                    long c = en.getValue();
+                    Long pvv = prevDetail.get(en.getKey());
+                    long d = pvv == null ? c : (c < pvv ? c : c - pvv);
+                    if (d <= 0) continue;
+                    String[] k = en.getKey().split("\t", 4);
+                    if (k.length != 4) continue;
+                    int uid;
+                    try { uid = Integer.parseInt(k[1]); } catch (NumberFormatException e) { continue; }
+                    TreeMap<String, StringBuilder> m = detailByUid.get(uid);
+                    if (m == null) { m = new TreeMap<>(); detailByUid.put(uid, m); }
+                    String item = String.format(L, "%-9s %s", "[" + k[0] + "]", k[2]);
+                    StringBuilder line = m.get(item);
+                    if (line == null) { line = new StringBuilder(); m.put(item, line); }
+                    line.append("  ").append(k[3]).append(" +").append(fmtMetric(k[3], d));
+                    if (k[3].equals("ms") || k[3].equals("cpu")) {
+                        Long w = detailWeight.get(uid);
+                        detailWeight.put(uid, (w == null ? 0 : w) + d);
+                    }
+                }
+            }
+
             if (firstRun) {
-                sb.append("(İlk ölçüm: aralık farkları bir sonraki kayıttan itibaren hesaplanacak.)\n");
+                sb.append("(İlk ölçüm: bu kayıt referanstır, aralık farkları bir sonraki kayıttan itibaren yazılır.)\n");
             } else {
                 rows.sort((a, b) -> {
                     int c = Long.compare(b.d[0], a.d[0]);
                     return c != 0 ? c : Long.compare(b.d[1], a.d[1]);
                 });
-                sb.append("\n--- UYGULAMA/SÜREÇ BAZINDA, BU ARALIKTA (sistem dahil) ---\n");
+                sb.append("\n--- UYGULAMA/SÜREÇ BAZINDA, BU ARALIKTA (sistem dahil, sınırsız) ---\n");
                 sb.append(String.format(L, "%8s %9s %9s %6s %5s %10s %10s  %s%n",
                         "mAh", "CPU(sn)", "WakeLock", "Alarm", "İş", "Mobil(KB)", "WiFi(KB)", "Uygulama"));
-                int n = 0, hidden = 0;
+                int nRows = 0;
                 for (Row row : rows) {
-                    boolean any = row.d[0] > 0 || row.d[1] > 0 || row.d[2] > 0 || row.d[3] > 0 || row.d[4] > 0
-                            || row.d[5] > 0 || row.d[6] > 0;
-                    if (!any) continue;
-                    if (n >= MAX_ROWS && row.uid != myUid) { hidden++; continue; }
-                    n++;
-                    sb.append(String.format(L, "%8.2f %9.1f %9s %6d %5d %10d %10d  %s%n",
+                    boolean any = false;
+                    for (long x : row.d) if (x > 0) { any = true; break; }
+                    if (!any && !detailByUid.containsKey(row.uid)) continue;
+                    nRows++;
+                    sb.append(String.format(L, "%8.3f %9.2f %9s %6d %5d %10d %10d  %s%n",
                             row.d[0] / 1000.0, row.d[1] / 1000.0, durShort(row.d[2]), row.d[3], row.d[4],
                             row.d[5] / 1024, row.d[6] / 1024, uidLabel(pm, row.uid, bs, labelCache)));
                 }
-                if (n == 0) sb.append("  (bu aralıkta kayda değer etkinlik yok)\n");
-                if (hidden > 0) sb.append("  ... ve ").append(hidden).append(" küçük kalem daha\n");
+                if (nRows == 0) sb.append("  (bu aralıkta etkinlik yok)\n");
+
+                sb.append("\n--- AYRINTI: HER SÜREÇ / SERVİS / WAKELOCK / ALARM / İŞ / SENKRON / KERNEL (bu aralıkta) ---\n");
+                if (detailByUid.isEmpty()) {
+                    sb.append("  (değişen kalem yok)\n");
+                } else {
+                    List<Integer> uids = new ArrayList<>(detailByUid.keySet());
+                    uids.sort((a, b) -> {
+                        Long wa = detailWeight.get(a), wb = detailWeight.get(b);
+                        return Long.compare(wb == null ? 0 : wb, wa == null ? 0 : wa);
+                    });
+                    for (int uid : uids) {
+                        sb.append("* ").append(uidLabel(pm, uid, bs, labelCache)).append('\n');
+                        for (Map.Entry<String, StringBuilder> en : detailByUid.get(uid).entrySet()) {
+                            sb.append("    ").append(en.getKey()).append(" ->").append(en.getValue()).append('\n');
+                        }
+                    }
+                }
             }
 
-            // Son tam şarjdan beri toplamlar
             rows.sort((a, b) -> Double.compare(b.s.mah, a.s.mah));
             sb.append("\n--- SON TAM ŞARJDAN BERİ EN ÇOK TÜKETENLER (ilk 15) ---\n");
             sb.append(String.format(L, "%8s %9s %9s  %s%n", "mAh", "CPU(dk)", "WakeLock", "Uygulama"));
@@ -150,30 +194,31 @@ final class Collector {
                     .append(ctx.getPackageName()).append(" android.permission.DUMP\n");
         }
 
-        // ---------- UsageStats tablosu ----------
+        if (act != null) appendActivity(ctx, sb, act, sp, now);
+
         if (usage.ok) {
             List<Map.Entry<String, UsageReader.AppUsage>> list = new ArrayList<>(usage.apps.entrySet());
-            list.removeIf(en -> en.getValue().fgMs <= 0 && en.getValue().fgsMs <= 0 && en.getValue().resumes == 0
-                    && en.getValue().fgsStarts == 0);
-            list.sort((a, b) -> Long.compare(b.getValue().fgMs + b.getValue().fgsMs, a.getValue().fgMs + a.getValue().fgsMs));
-            sb.append("\n--- NE YAPILDI: EKRAN / ÖN PLAN SERVİSİ (UsageStats, bu aralıkta) ---\n");
+            list.sort((a, b) -> {
+                int c = Long.compare(b.getValue().fgMs + b.getValue().fgsMs, a.getValue().fgMs + a.getValue().fgsMs);
+                return c != 0 ? c : Integer.compare(b.getValue().events, a.getValue().events);
+            });
+            sb.append("\n--- NE YAPILDI: UYGULAMA ÖZETİ (UsageStats, bu aralıkta, olayı olan herkes) ---\n");
             if (list.isEmpty()) {
-                sb.append("  (ekranda veya ön plan servisinde çalışan uygulama yok)\n");
+                sb.append("  (olay yok)\n");
             } else {
-                sb.append(String.format(L, "%10s %7s %12s %7s  %s%n", "Ekranda", "Açılış", "ÖnPlanServis", "Başlat", "Uygulama"));
-                int n = 0;
+                sb.append(String.format(L, "%10s %7s %12s %7s %6s  %s%n", "Ekranda", "Açılış", "ÖnPlanServis", "Başlat", "Olay", "Uygulama"));
                 for (Map.Entry<String, UsageReader.AppUsage> en : list) {
-                    if (n++ >= MAX_ROWS) break;
                     UsageReader.AppUsage a = en.getValue();
-                    sb.append(String.format(L, "%10s %7d %12s %7d  %s%n", durShort(a.fgMs), a.resumes,
-                            durShort(a.fgsMs), a.fgsStarts, pkgLabel(pm, en.getKey(), labelCache)));
+                    sb.append(String.format(L, "%10s %7d %12s %7d %6d  %s%n", durShort(a.fgMs), a.resumes,
+                            durShort(a.fgsMs), a.fgsStarts, a.events, pkgLabel(pm, en.getKey(), labelCache)));
                 }
             }
+            sb.append("\n--- OLAY GÜNLÜĞÜ (UsageStats, zaman sırasıyla, ").append(usage.events.size()).append(" olay) ---\n");
+            for (String ev : usage.events) sb.append("  ").append(ev).append('\n');
         } else {
             sb.append("\n[UsageStats] Kullanım erişimi izni yok (Ayarlar > Kullanım erişimi > Pil Log).\n");
         }
 
-        // ---------- Kendi tüketimi ----------
         long tookMs = SystemClock.elapsedRealtime() - startElapsed;
         long cpuMs = Process.getElapsedCpuTime() - startCpu;
         sb.append("\nPil Log'un kendisi: bu ölçüm ").append(tookMs).append(" ms sürdü, ").append(cpuMs).append(" ms CPU");
@@ -184,6 +229,128 @@ final class Collector {
 
         LogWriter.append(ctx, sb.toString());
         sp.edit().putLong("lastRun", now).apply();
+    }
+
+    /** Çalışan süreçler ve servisler: her saat başı tam liste, arada sadece değişenler. */
+    private static void appendActivity(Context ctx, StringBuilder sb, ActivityReader.Result act, SharedPreferences sp, long now) {
+        long hour = now / 3600_000L;
+        boolean fullList = sp.getLong("lastFullHour", -1) != hour;
+        if (fullList) sp.edit().putLong("lastFullHour", hour).apply();
+
+        sb.append("\n--- ÇALIŞAN SÜREÇLER (activity lru) ---\n");
+        if (act.procError != null) {
+            sb.append("  [").append(act.procError).append("]\n");
+        } else {
+            appendDiff(sb, loadMap(ctx, "procs_prev.txt"), act.procs, fullList, "süreç");
+            saveMap(ctx, "procs_prev.txt", act.procs);
+        }
+        sb.append("\n--- ÇALIŞAN SERVİSLER (activity services) ---\n");
+        if (act.svcError != null) {
+            sb.append("  [").append(act.svcError).append("]\n");
+        } else {
+            appendDiff(sb, loadMap(ctx, "svcs_prev.txt"), act.services, fullList, "servis");
+            saveMap(ctx, "svcs_prev.txt", act.services);
+        }
+    }
+
+    private static void appendDiff(StringBuilder sb, Map<String, String> prev, TreeMap<String, String> cur,
+                                   boolean full, String what) {
+        int started = 0, stopped = 0, changed = 0;
+        StringBuilder d = new StringBuilder();
+        for (Map.Entry<String, String> en : cur.entrySet()) {
+            String old = prev.get(en.getKey());
+            if (old == null) {
+                started++;
+                d.append("  + BAŞLADI   ").append(en.getKey()).append("  [").append(en.getValue()).append("]\n");
+            } else if (!stateCore(old).equals(stateCore(en.getValue()))) {
+                changed++;
+                d.append("  ~ değişti   ").append(en.getKey()).append("  [").append(old).append("] -> [")
+                        .append(en.getValue()).append("]\n");
+            }
+        }
+        for (Map.Entry<String, String> en : prev.entrySet()) {
+            if (!cur.containsKey(en.getKey())) {
+                stopped++;
+                d.append("  - SONLANDI  ").append(en.getKey()).append("  [").append(en.getValue()).append("]\n");
+            }
+        }
+        sb.append(String.format(L, "  Toplam %d %s | başlayan %d | sonlanan %d | durumu değişen %d%n",
+                cur.size(), what, started, stopped, changed));
+        sb.append(d);
+        if (full) {
+            sb.append("  [Saatlik tam liste]\n");
+            for (Map.Entry<String, String> en : cur.entrySet()) {
+                sb.append("    ").append(en.getKey()).append("  [").append(en.getValue()).append("]\n");
+            }
+        }
+    }
+
+    /** pid ve sıra değişimlerini "durum değişti" sayma; sadece öncelik/durum kısmını karşılaştır */
+    private static String stateCore(String s) {
+        int i = s.indexOf(" pid=");
+        return i < 0 ? s : s.substring(0, i);
+    }
+
+    private static Map<String, String> loadMap(Context ctx, String file) {
+        Map<String, String> m = new HashMap<>();
+        File f = new File(ctx.getFilesDir(), file);
+        if (!f.exists()) return m;
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                int t = line.indexOf('\t');
+                if (t > 0) m.put(line.substring(0, t), line.substring(t + 1));
+            }
+        } catch (Exception ignored) {
+        }
+        return m;
+    }
+
+    private static void saveMap(Context ctx, String file, Map<String, String> m) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> en : m.entrySet()) {
+            sb.append(en.getKey().replace('\t', ' ')).append('\t').append(en.getValue().replace('\n', ' ')).append('\n');
+        }
+        writeFile(ctx, file, sb.toString());
+    }
+
+    private static Map<String, Long> loadDetail(Context ctx) {
+        Map<String, Long> m = new HashMap<>();
+        File f = new File(ctx.getFilesDir(), "prev_detail.txt");
+        if (!f.exists()) return m;
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                int t = line.lastIndexOf('\t');
+                if (t <= 0) continue;
+                try { m.put(line.substring(0, t), Long.parseLong(line.substring(t + 1))); } catch (NumberFormatException ignored) { }
+            }
+        } catch (Exception ignored) {
+        }
+        return m;
+    }
+
+    private static void saveDetail(Context ctx, Map<String, Long> m) {
+        StringBuilder sb = new StringBuilder(m.size() * 64);
+        for (Map.Entry<String, Long> en : m.entrySet()) {
+            sb.append(en.getKey().replace('\n', ' ')).append('\t').append(en.getValue()).append('\n');
+        }
+        writeFile(ctx, "prev_detail.txt", sb.toString());
+    }
+
+    private static void writeFile(Context ctx, String name, String content) {
+        try (FileOutputStream fos = new FileOutputStream(new File(ctx.getFilesDir(), name))) {
+            fos.write(content.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String fmtMetric(String metric, long v) {
+        if (metric.equals("ms") || metric.equals("cpu")) {
+            if (v < 1000) return v + "ms";
+            return String.format(L, "%.1fs", v / 1000.0);
+        }
+        return String.valueOf(v);
     }
 
     // ------------------------------------------------------------------
