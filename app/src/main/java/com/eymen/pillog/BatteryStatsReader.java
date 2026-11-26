@@ -57,7 +57,7 @@ final class BatteryStatsReader {
         }
         try {
             r.source = Dumper.dump("batterystats", new String[]{"-c", "--charged"}, l -> parseLine(l, r));
-            if (r.uids.isEmpty()) r.error = "batterystats boş döndü (" + r.source + ")";
+            if (r.uids.isEmpty()) r.error = "batterystats ayrıştırılamadı (" + r.source + ")" + Dumper.headForLog();
         } catch (Exception e) {
             r.error = "batterystats okunamadı: " + e;
         }

@@ -21,6 +21,16 @@ final class Dumper {
 
     private Dumper() {}
 
+    /** Son dump çıktısının ilk satırları (ayrıştırma boş kalırsa log'a teşhis için yazılır). */
+    static volatile String lastHead = "";
+
+    /** Son dump'ın ilk satırlarını tek satırlık teşhis metni olarak verir. */
+    static String headForLog() {
+        String h = lastHead;
+        if (h == null || h.isEmpty()) return " | çıktı: (boş)";
+        return "\n    ham çıktının başı:\n" + h;
+    }
+
     /** @return kullanılan yol ("binder"/"dumpsys"); hata olursa istisna fırlatır */
     static String dump(String service, String[] args, LineSink sink) throws Exception {
         Exception first;
@@ -80,10 +90,18 @@ final class Dumper {
         BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8), 16 * 1024);
         String l;
         int n = 0;
-        while ((l = br.readLine()) != null) {
-            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
-            n++;
-            sink.line(l);
+        StringBuilder head = new StringBuilder();
+        try {
+            while ((l = br.readLine()) != null) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                n++;
+                if (n <= 12) {
+                    head.append("      | ").append(l.length() > 220 ? l.substring(0, 220) + "…" : l).append('\n');
+                }
+                sink.line(l);
+            }
+        } finally {
+            lastHead = head.toString();
         }
         return n;
     }

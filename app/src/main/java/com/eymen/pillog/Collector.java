@@ -190,8 +190,10 @@ final class Collector {
             }
         } else {
             sb.append("\n[batterystats] ").append(bs.error).append('\n');
-            sb.append("  -> Uygulama bazında mAh/CPU için bilgisayardan bir kez: adb shell pm grant ")
-                    .append(ctx.getPackageName()).append(" android.permission.DUMP\n");
+            sb.append("  izinler: DUMP=").append(BatteryStatsReader.hasPermission(ctx) ? "var" : "YOK")
+                    .append(", BATTERY_STATS=")
+                    .append(ctx.checkSelfPermission("android.permission.BATTERY_STATS") == android.content.pm.PackageManager.PERMISSION_GRANTED ? "var" : "YOK")
+                    .append(", Kullanım erişimi=").append(UsageReader.hasAccess(ctx) ? "var" : "YOK").append('\n');
         }
 
         if (act != null) appendActivity(ctx, sb, act, sp, now);

@@ -34,7 +34,7 @@ final class ActivityReader {
                     r.procs.put(key, state);
                 }
             });
-            if (r.procs.isEmpty()) r.procError = "süreç listesi boş döndü";
+            if (r.procs.isEmpty()) r.procError = "süreç listesi ayrıştırılamadı" + Dumper.headForLog();
         } catch (Exception e) {
             r.procError = "süreç listesi okunamadı: " + e;
         }
@@ -49,7 +49,7 @@ final class ActivityReader {
                     r.services.put(cur[0], "ÖN PLAN");
                 }
             });
-            if (r.services.isEmpty()) r.svcError = "servis listesi boş döndü";
+            if (r.services.isEmpty()) r.svcError = "servis listesi ayrıştırılamadı" + Dumper.headForLog();
         } catch (Exception e) {
             r.svcError = "servis listesi okunamadı: " + e;
         }
