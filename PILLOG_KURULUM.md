@@ -1,10 +1,10 @@
 # Pil Log — arka plan pil / CPU kaydedici (Android)
 
 Arayüzü olmayan (sadece tek seferlik kurulum ekranı olan) bir uygulama. Kurulduktan sonra
-**her ~15 dakikada bir** telefonun durumunu ölçer ve şu dosyaya ekler:
+**saatte bir** telefonun durumunu ölçer ve şu dosyaya ekler:
 
 ```
-İndirilenler/PilLog/pil_log_YYYY-MM-DD.txt   (her gün yeni dosya)
+İndirilenler/PilLog/pil_log.txt   (her kayıt aynı dosyanın sonuna eklenir)
 ```
 
 ## Neler kaydediliyor
@@ -46,7 +46,7 @@ Her kayıtta:
 2. Uygulamayı **bir kez açın**. Açılan ekranda:
    - **"Kullanım erişimi iznini aç"** → Pil Log'u açın.
    - **"Pil optimizasyonundan muaf tut"** → İzin verin. (Bunu yapmazsanız ve uygulamayı hiç açmazsanız Android
-     kayıtları günde bire kadar seyreltebilir. Muafiyet uygulamanın tüketimini artırmaz; sadece 15 dakikalık aralık korunur.)
+     kayıtları günde bire kadar seyreltebilir. Muafiyet uygulamanın tüketimini artırmaz; sadece saatlik aralık korunur.)
 3. **DUMP izni (bir kerelik):** Tüm uygulamaların ve sistem süreçlerinin mAh/CPU verisi için gerekli.
    Android normal uygulamaların başka uygulamaların pil ve işlemci tüketimini görmesine izin vermez. Bu iznin
    tek yolu ADB'dir, root gerekmez:
@@ -96,7 +96,7 @@ One UI, pil optimizasyonu muafiyetine ek olarak uygulamaları kendi listeleriyle
    listesindeyse çıkarın. İsterseniz "Hiç uyumayan uygulamalar"a ekleyin.
 3. "Kullanılmayan uygulamaları uyku moduna al" açıksa Pil Log'u yukarıdaki gibi istisna yapın.
 
-Bunlar uygulamanın daha fazla pil harcamasına yol açmaz; sadece Samsung'un 15 dakikalık işi iptal etmesini önler.
+Bunlar uygulamanın daha fazla pil harcamasına yol açmaz; sadece Samsung'un saatlik işi iptal etmesini önler.
 
 ## Notlar
 

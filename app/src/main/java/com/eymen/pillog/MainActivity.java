@@ -14,7 +14,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
- * Tek seferlik kurulum ekranı. Uygulama bir kez açılınca arka planda 15 dakikada bir
+ * Tek seferlik kurulum ekranı. Uygulama bir kez açılınca arka planda saatte bir
  * kayıt almaya başlar; bu ekranı tekrar açmanız gerekmez.
  */
 public class MainActivity extends Activity {
@@ -60,11 +60,6 @@ public class MainActivity extends Activity {
         });
         root.addView(batt);
 
-        Button now = new Button(this);
-        now.setText("Şimdi bir kayıt al");
-        now.setOnClickListener(v -> collectNow());
-        root.addView(now);
-
         ScrollView sv = new ScrollView(this);
         sv.addView(root);
         setContentView(sv);
@@ -81,28 +76,6 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             android.widget.Toast.makeText(this, "Zamanlama hatası: " + e, android.widget.Toast.LENGTH_LONG).show();
         }
-        collectNow();
-    }
-
-    /** Ekran açıkken hemen bir kayıt al (dosyanın oluştuğunu görmek için). */
-    private void collectNow() {
-        final android.content.Context app = getApplicationContext();
-        new Thread(() -> {
-            String msg;
-            try {
-                Collector.collectAndWrite(app);
-                msg = "Kayıt alındı: İndirilenler/" + LogWriter.FOLDER + "/" + LogWriter.todayFileName();
-            } catch (Throwable t) {
-                msg = "Kayıt hatası: " + t;
-                try { LogWriter.append(app, "\n[HATA] " + android.util.Log.getStackTraceString(t) + "\n"); } catch (Throwable ignored) { }
-            }
-            final String m = msg;
-            runOnUiThread(() -> {
-                if (isFinishing()) return;
-                android.widget.Toast.makeText(app, m, android.widget.Toast.LENGTH_LONG).show();
-                refresh();
-            });
-        }, "pillog-now").start();
     }
 
     @Override
@@ -116,9 +89,9 @@ public class MainActivity extends Activity {
         boolean dumpOk = BatteryStatsReader.hasPermission(this);
         StringBuilder sb = new StringBuilder();
         sb.append("Pil Log arka planda çalışıyor.\n\n");
-        sb.append("Her ~15 dakikada bir şu dosyaya kayıt eklenir:\n")
+        sb.append("Saatte bir şu dosyanın sonuna kayıt eklenir:\n")
                 .append("İndirilenler/").append(LogWriter.FOLDER).append("/").append(LogWriter.todayFileName())
-                .append("\n(her gün yeni dosya)\n\n");
+                .append("\n\n");
         sb.append(usageOk ? "✔" : "✘").append(" Kullanım erişimi (hangi uygulama ne kadar ekranda / ön plan servisinde)\n");
         sb.append(dumpOk ? "✔" : "✘").append(" DUMP izni (tüm uygulama ve sistem süreçlerinin mAh ve CPU tüketimi)\n");
         sb.append(BluetoothReader.hasConnectPermission(this) ? "✔" : "✘").append(" Yakındaki cihazlar izni (Bluetooth cihazları ve kopmalar)\n");

@@ -18,14 +18,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** İndirilenler/PilLog/pil_log_YYYY-MM-DD.txt dosyasına ekleme yapar (her gün yeni dosya). */
+/** İndirilenler/PilLog/pil_log.txt dosyasının sonuna ekleme yapar. */
 final class LogWriter {
     static final String FOLDER = "PilLog";
 
     private LogWriter() {}
 
+    /** Tek dosya: her kayıt sonuna eklenir. */
     static String todayFileName() {
-        return "pil_log_" + new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date()) + ".txt";
+        return "pil_log.txt";
     }
 
     static synchronized void append(Context ctx, String text) throws Exception {
