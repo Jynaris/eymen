@@ -198,12 +198,22 @@ final class Collector {
 
         if (act != null) appendActivity(ctx, sb, act, sp, now);
 
-        BluetoothReader.appendStatus(ctx, sb);
+        // Bluetooth kayıtları ayrı dosyaya: İndirilenler/PilLog/bt_log_YYYY-MM-DD.txt
+        StringBuilder bt = new StringBuilder();
+        bt.append("\n==================== BT ").append(full.format(new java.util.Date(now))).append(" ====================\n");
+        BluetoothReader.appendStatus(ctx, bt);
+        if (BatteryStatsReader.hasPermission(ctx)) BluetoothReader.appendStackEvents(ctx, bt);
+        try {
+            LogWriter.appendBt(ctx, bt.toString());
+            sb.append("\n[Bluetooth] cihaz durumu ve yığın olayları ayrı dosyada: ")
+                    .append(LogWriter.btFileNameFor(now)).append('\n');
+        } catch (Exception e) {
+            sb.append("\n[Bluetooth] ayrı dosyaya yazılamadı (").append(e).append("), buraya ekleniyor:").append(bt);
+        }
         if (BatteryStatsReader.hasPermission(ctx)) {
             BluetoothReader.appendAudioNow(ctx, sb, pm);
             DumpDiff.append(ctx, sb, "SES: OLAY GEÇMİŞİ (hangi uygulama ne zaman çaldı, odak, BT/SCO yönlendirme, cihaz bağlantıları)",
                     "audio", new String[0], "audio_seen.txt");
-            BluetoothReader.appendStackEvents(ctx, sb);
         }
 
         if (usage.ok) {

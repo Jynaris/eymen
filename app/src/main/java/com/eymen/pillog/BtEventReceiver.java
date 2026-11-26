@@ -23,7 +23,7 @@ public class BtEventReceiver extends BroadcastReceiver {
         final String line = format(intent);
         new Thread(() -> {
             try {
-                LogWriter.append(app, line);
+                LogWriter.appendBt(app, line);
             } catch (Throwable ignored) {
             } finally {
                 pr.finish();

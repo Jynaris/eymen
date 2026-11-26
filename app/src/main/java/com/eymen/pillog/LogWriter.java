@@ -27,11 +27,23 @@ final class LogWriter {
     /** Dönem her gün saat 10:00'da başlar; o dönemin tüm kayıtları aynı dosyanın sonuna eklenir. */
     static final int ROLLOVER_HOUR = 10;
 
+    static final String MAIN_PREFIX = "pil_log_";
+    static final String BT_PREFIX = "bt_log_";
+
     static String fileNameFor(long t) {
+        return fileNameFor(MAIN_PREFIX, t);
+    }
+
+    /** Bluetooth kayıtlarının ayrı dosyası (aynı 10:00 - 10:00 dönemi). */
+    static String btFileNameFor(long t) {
+        return fileNameFor(BT_PREFIX, t);
+    }
+
+    static String fileNameFor(String prefix, long t) {
         java.util.Calendar c = java.util.Calendar.getInstance();
         c.setTimeInMillis(t);
         if (c.get(java.util.Calendar.HOUR_OF_DAY) < ROLLOVER_HOUR) c.add(java.util.Calendar.DAY_OF_MONTH, -1);
-        return "pil_log_" + new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.getTime()) + ".txt";
+        return prefix + new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.getTime()) + ".txt";
     }
 
     static String todayFileName() {
@@ -40,6 +52,11 @@ final class LogWriter {
 
     static synchronized void append(Context ctx, String text) throws Exception {
         appendTo(ctx, todayFileName(), text);
+    }
+
+    /** Bluetooth dosyasının sonuna ekler. */
+    static synchronized void appendBt(Context ctx, String text) throws Exception {
+        appendTo(ctx, btFileNameFor(System.currentTimeMillis()), text);
     }
 
     static synchronized void appendTo(Context ctx, String name, String text) throws Exception {
@@ -59,8 +76,10 @@ final class LogWriter {
     private static void appendQ(Context ctx, String name, byte[] data) throws Exception {
         ContentResolver cr = ctx.getContentResolver();
         SharedPreferences sp = ctx.getSharedPreferences("writer", Context.MODE_PRIVATE);
-        String cachedName = sp.getString("name", null);
-        String cachedUri = sp.getString("uri", null);
+        // Her dosya türü (pil_log_ / bt_log_) için ayrı önbellek: dönüşümlü yazımda sorgu tekrarlanmasın
+        String kind = name.startsWith(BT_PREFIX) ? "bt" : "main";
+        String cachedName = sp.getString(kind + "_name", null);
+        String cachedUri = sp.getString(kind + "_uri", null);
 
         Uri uri = null;
         if (name.equals(cachedName) && cachedUri != null) uri = Uri.parse(cachedUri);
@@ -70,7 +89,7 @@ final class LogWriter {
             try (OutputStream os = cr.openOutputStream(uri, "wa")) {
                 if (os != null) {
                     os.write(data);
-                    sp.edit().putString("name", name).putString("uri", uri.toString()).apply();
+                    sp.edit().putString(kind + "_name", name).putString(kind + "_uri", uri.toString()).apply();
                     return;
                 }
             } catch (Exception ignored) {
@@ -88,7 +107,7 @@ final class LogWriter {
             if (os == null) throw new IllegalStateException("Dosya açılamadı");
             os.write(data);
         }
-        sp.edit().putString("name", name).putString("uri", created.toString()).apply();
+        sp.edit().putString(kind + "_name", name).putString(kind + "_uri", created.toString()).apply();
     }
 
     private static Uri findExisting(ContentResolver cr, String name) {

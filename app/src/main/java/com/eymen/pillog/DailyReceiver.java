@@ -43,6 +43,10 @@ public class DailyReceiver extends BroadcastReceiver {
                 try {
                     LogWriter.appendTo(app, oldName, "\n######## KAYIT SONU " + ts + " — sonraki kayıtlar: " + newName + " ########\n");
                     LogWriter.appendTo(app, newName, "######## YENİ KAYIT DÖNEMİ " + ts + " (önceki: " + oldName + ") ########\n");
+                    String oldBt = LogWriter.btFileNameFor(now - 24L * 3600_000L);
+                    String newBt = LogWriter.btFileNameFor(now);
+                    LogWriter.appendTo(app, oldBt, "\n######## KAYIT SONU " + ts + " — sonraki kayıtlar: " + newBt + " ########\n");
+                    LogWriter.appendTo(app, newBt, "######## YENİ KAYIT DÖNEMİ " + ts + " (önceki: " + oldBt + ") ########\n");
                 } catch (Exception ignored) {
                 }
                 notify(app, oldName, newName);

@@ -5,6 +5,7 @@ Arayüzü olmayan (sadece tek seferlik kurulum ekranı olan) bir uygulama. Kurul
 
 ```
 İndirilenler/PilLog/pil_log_YYYY-MM-DD.txt   (10:00 - ertesi gün 10:00 arası tüm kayıtlar aynı dosyaya eklenir)
+İndirilenler/PilLog/bt_log_YYYY-MM-DD.txt    (tüm Bluetooth kayıtları, aynı dönem ve aynı ekleme mantığıyla)
 ```
 
 Her sabah **10:00'da** biten dosyanın sonuna "KAYIT SONU" yazılır, "Kayıt alma bitti, yeni kayda geçiliyor"
@@ -24,7 +25,7 @@ Her kayıtta:
 - **Çalışan süreçler ve servisler:** her kayıtta başlayan, sonlanan ve durumu değişen süreçler/servisler; saat başı tam liste
 - **Olay günlüğü:** UsageStats'ın aralıktaki tüm olayları zaman sırasıyla (uygulama açıldı/kapandı, bildirim geldi,
   ön plan servisi başladı/durdu, ekran açıldı/kapandı, kilit, bekleme kovası değişti vb.)
-- **Bluetooth:** eşleşmiş/bağlı cihazlar, profilleri (müzik, çağrı, BLE…), cihazların pil yüzdesi ve saatlik düşüş hızı;
+- **Bluetooth (ayrı dosya, `bt_log_...`):** eşleşmiş/bağlı cihazlar, profilleri (müzik, çağrı, BLE…), cihazların pil yüzdesi ve saatlik düşüş hızı;
   bağlanma/kopma anında saniyesiyle ayrı satır (`[BT ...]`); Bluetooth yığınının kendi hata/kopma geçmişi (`!!` ile işaretli)
 - **Ses:** şu an hangi uygulamanın ses çaldığı ve ses geçmişi (kim ne zaman çaldı, Bluetooth/SCO yönlendirmeleri).
   Böylece bağlı kulaklığın şarjının neye gittiği kayıtlarla eşleştirilebilir.
