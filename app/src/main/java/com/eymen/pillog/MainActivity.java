@@ -68,9 +68,13 @@ public class MainActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
-        if (!BluetoothReader.hasConnectPermission(this)) {
-            requestPermissions(new String[]{"android.permission.BLUETOOTH_CONNECT"}, 2);
+        java.util.List<String> req = new java.util.ArrayList<>();
+        if (!BluetoothReader.hasConnectPermission(this)) req.add("android.permission.BLUETOOTH_CONNECT");
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            req.add("android.permission.POST_NOTIFICATIONS");
         }
+        if (!req.isEmpty()) requestPermissions(req.toArray(new String[0]), 2);
+        DailyReceiver.schedule(this);
         try {
             Scheduler.schedule(this);
         } catch (Exception e) {
@@ -89,12 +93,14 @@ public class MainActivity extends Activity {
         boolean dumpOk = BatteryStatsReader.hasPermission(this);
         StringBuilder sb = new StringBuilder();
         sb.append("Pil Log arka planda çalışıyor.\n\n");
-        sb.append("Saatte bir şu dosyanın sonuna kayıt eklenir:\n")
+        sb.append("Saatte bir şu dosyanın sonuna kayıt eklenir (her sabah 10:00'da yeni dosyaya geçer, bildirim gelir):\n")
                 .append("İndirilenler/").append(LogWriter.FOLDER).append("/").append(LogWriter.todayFileName())
                 .append("\n\n");
         sb.append(usageOk ? "✔" : "✘").append(" Kullanım erişimi (hangi uygulama ne kadar ekranda / ön plan servisinde)\n");
         sb.append(dumpOk ? "✔" : "✘").append(" DUMP izni (tüm uygulama ve sistem süreçlerinin mAh ve CPU tüketimi)\n");
         sb.append(BluetoothReader.hasConnectPermission(this) ? "✔" : "✘").append(" Yakındaki cihazlar izni (Bluetooth cihazları ve kopmalar)\n");
+        sb.append(DailyReceiver.canNotify(this) ? "✔" : "✘").append(" Bildirim izni (sabah 10:00 bildirimi)\n");
+        sb.append(DailyReceiver.exactAllowed(this) ? "✔" : "✘").append(" Tam zamanlı alarm (bildirim tam 10:00'da gelsin; yoksa birkaç dakika gecikebilir)\n");
         android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
         boolean battOk = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         sb.append(battOk ? "✔" : "✘").append(" Pil optimizasyonu muafiyeti (uygulamayı hiç açmasanız da Android kayıtları günde bire düşürmesin diye; kendi tüketimi artmaz)\n");

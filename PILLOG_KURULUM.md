@@ -4,8 +4,11 @@ Arayüzü olmayan (sadece tek seferlik kurulum ekranı olan) bir uygulama. Kurul
 **saatte bir** telefonun durumunu ölçer ve şu dosyaya ekler:
 
 ```
-İndirilenler/PilLog/pil_log.txt   (her kayıt aynı dosyanın sonuna eklenir)
+İndirilenler/PilLog/pil_log_YYYY-MM-DD.txt   (10:00 - ertesi gün 10:00 arası tüm kayıtlar aynı dosyaya eklenir)
 ```
+
+Her sabah **10:00'da** biten dosyanın sonuna "KAYIT SONU" yazılır, "Kayıt alma bitti, yeni kayda geçiliyor"
+bildirimi gelir ve sonraki kayıtlar yeni dosyaya gider.
 
 ## Neler kaydediliyor
 
@@ -55,6 +58,8 @@ Her kayıtta:
    adb shell pm grant com.eymen.pillog android.permission.DUMP
    adb shell pm grant com.eymen.pillog android.permission.BATTERY_STATS
    adb shell pm grant com.eymen.pillog android.permission.BLUETOOTH_CONNECT
+   adb shell pm grant com.eymen.pillog android.permission.POST_NOTIFICATIONS
+   adb shell appops set com.eymen.pillog SCHEDULE_EXACT_ALARM allow
    ```
 
    (Asıl gerekli olan ilk satırdır; ikinci satır bazı cihazlarda hata verebilir, önemsemeyin.)

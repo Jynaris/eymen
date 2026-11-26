@@ -18,20 +18,32 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** İndirilenler/PilLog/pil_log.txt dosyasının sonuna ekleme yapar. */
+/** İndirilenler/PilLog/pil_log_YYYY-MM-DD.txt (10:00 - ertesi gün 10:00) dosyasının sonuna ekleme yapar. */
 final class LogWriter {
     static final String FOLDER = "PilLog";
 
     private LogWriter() {}
 
-    /** Tek dosya: her kayıt sonuna eklenir. */
+    /** Dönem her gün saat 10:00'da başlar; o dönemin tüm kayıtları aynı dosyanın sonuna eklenir. */
+    static final int ROLLOVER_HOUR = 10;
+
+    static String fileNameFor(long t) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(t);
+        if (c.get(java.util.Calendar.HOUR_OF_DAY) < ROLLOVER_HOUR) c.add(java.util.Calendar.DAY_OF_MONTH, -1);
+        return "pil_log_" + new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.getTime()) + ".txt";
+    }
+
     static String todayFileName() {
-        return "pil_log.txt";
+        return fileNameFor(System.currentTimeMillis());
     }
 
     static synchronized void append(Context ctx, String text) throws Exception {
+        appendTo(ctx, todayFileName(), text);
+    }
+
+    static synchronized void appendTo(Context ctx, String name, String text) throws Exception {
         byte[] data = text.getBytes(StandardCharsets.UTF_8);
-        String name = todayFileName();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             appendQ(ctx, name, data);
         } else {

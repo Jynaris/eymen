@@ -237,6 +237,7 @@ final class Collector {
 
         LogWriter.append(ctx, sb.toString());
         sp.edit().putLong("lastRun", now).apply();
+        try { DailyReceiver.schedule(ctx); } catch (Exception ignored) { } // alarm her ihtimale karşı tazelenir
     }
 
     /** Çalışan süreçler ve servisler: her saat başı tam liste, arada sadece değişenler. */
