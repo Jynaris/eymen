@@ -73,6 +73,9 @@ public class MainActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
+        if (!BluetoothReader.hasConnectPermission(this)) {
+            requestPermissions(new String[]{"android.permission.BLUETOOTH_CONNECT"}, 2);
+        }
         try {
             Scheduler.schedule(this);
         } catch (Exception e) {
@@ -118,6 +121,7 @@ public class MainActivity extends Activity {
                 .append("\n(her gün yeni dosya)\n\n");
         sb.append(usageOk ? "✔" : "✘").append(" Kullanım erişimi (hangi uygulama ne kadar ekranda / ön plan servisinde)\n");
         sb.append(dumpOk ? "✔" : "✘").append(" DUMP izni (tüm uygulama ve sistem süreçlerinin mAh ve CPU tüketimi)\n");
+        sb.append(BluetoothReader.hasConnectPermission(this) ? "✔" : "✘").append(" Yakındaki cihazlar izni (Bluetooth cihazları ve kopmalar)\n");
         android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
         boolean battOk = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         sb.append(battOk ? "✔" : "✘").append(" Pil optimizasyonu muafiyeti (uygulamayı hiç açmasanız da Android kayıtları günde bire düşürmesin diye; kendi tüketimi artmaz)\n");

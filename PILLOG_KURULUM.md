@@ -21,6 +21,10 @@ Her kayıtta:
 - **Çalışan süreçler ve servisler:** her kayıtta başlayan, sonlanan ve durumu değişen süreçler/servisler; saat başı tam liste
 - **Olay günlüğü:** UsageStats'ın aralıktaki tüm olayları zaman sırasıyla (uygulama açıldı/kapandı, bildirim geldi,
   ön plan servisi başladı/durdu, ekran açıldı/kapandı, kilit, bekleme kovası değişti vb.)
+- **Bluetooth:** eşleşmiş/bağlı cihazlar, profilleri (müzik, çağrı, BLE…), cihazların pil yüzdesi ve saatlik düşüş hızı;
+  bağlanma/kopma anında saniyesiyle ayrı satır (`[BT ...]`); Bluetooth yığınının kendi hata/kopma geçmişi (`!!` ile işaretli)
+- **Ses:** şu an hangi uygulamanın ses çaldığı ve ses geçmişi (kim ne zaman çaldı, Bluetooth/SCO yönlendirmeleri).
+  Böylece bağlı kulaklığın şarjının neye gittiği kayıtlarla eşleştirilebilir.
 - **Son tam şarjdan beri en çok tüketen 15 kalem** ve ekran, hücresel, WiFi, boşta gibi donanım kalemleri
 - **Ne yapıldı:** hangi uygulama kaç dakika ekranda kaldı, kaç kez açıldı, ne kadar ön plan servisi
   (müzik, navigasyon, indirme vb.) çalıştırdı; ekranın kaç kez açıldığı ve açık kalma süresi
@@ -50,6 +54,7 @@ Her kayıtta:
    ```
    adb shell pm grant com.eymen.pillog android.permission.DUMP
    adb shell pm grant com.eymen.pillog android.permission.BATTERY_STATS
+   adb shell pm grant com.eymen.pillog android.permission.BLUETOOTH_CONNECT
    ```
 
    (Asıl gerekli olan ilk satırdır; ikinci satır bazı cihazlarda hata verebilir, önemsemeyin.)
