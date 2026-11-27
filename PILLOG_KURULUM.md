@@ -57,13 +57,14 @@ Her kayıtta:
 
    ```
    adb shell pm grant com.eymen.pillog android.permission.DUMP
+   adb shell pm grant com.eymen.pillog android.permission.PACKAGE_USAGE_STATS
    adb shell pm grant com.eymen.pillog android.permission.BATTERY_STATS
    adb shell pm grant com.eymen.pillog android.permission.BLUETOOTH_CONNECT
    adb shell pm grant com.eymen.pillog android.permission.POST_NOTIFICATIONS
    adb shell appops set com.eymen.pillog SCHEDULE_EXACT_ALARM allow
    ```
 
-   (Asıl gerekli olan ilk satırdır; ikinci satır bazı cihazlarda hata verebilir, önemsemeyin.)
+   (Asıl gerekli olanlar ilk iki satırdır: pil istatistikleri ve süreç listesi DUMP'a ek olarak PACKAGE_USAGE_STATS izninin kendisini ister, ayarlardaki "Kullanım erişimi" anahtarı yetmez; ikinci satır bazı cihazlarda hata verebilir, önemsemeyin.)
 
    - **Bilgisayarla:** Geliştirici seçenekleri → USB hata ayıklama açık, telefonu bağlayıp yukarıdaki komutları çalıştırın.
    - **Bilgisayarsız (Android 11+):** Geliştirici seçenekleri → *Kablosuz hata ayıklama* ve telefonda bir ADB
